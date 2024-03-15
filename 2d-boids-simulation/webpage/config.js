@@ -1,0 +1,26 @@
+
+let config = {
+    "DIMENSIONS": 2,
+    "FISH_CX": 400,
+    "FISH_CY": 400,
+    "FISH_WIDTH": 15,
+    "FISH_HEIGHT": 5,
+    "FISH_DEFINITION": 4,
+    "FISH_STARTING_ANGLE": 0,
+    "FISH_TURN_SPEED": 2 * Math.PI,
+    "FISH_ACCELERATION": 0.4, // Pixels/s^2
+    "FPS": 30,
+    "ROTATION_ANGLE": 0.06,
+    "COHESION_FORCE": 0,
+    "SEPARATION_FORCE": 0,
+    "ANGLE_ALIGNMENT_FORCE": 0.01,
+    "SPEED_ALIGNMENT_FORCE": 0.01,
+    "ANGLE_LEADER_ALIGNMENT_FORCE": 0.01,
+    "FISH_DEFAULT_SPEED": 0.5,
+    "BOID_MIN_SPEED": 0.5,
+    "FISH_MAX_SPEED": 5,
+    "BREAKING_SPEED": 1,
+    "SEPARATION_DISTANCE": 10,
+};
+
+export default config;

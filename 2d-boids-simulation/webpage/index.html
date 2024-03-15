@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Henrique de Carvalho</title>
+</head>
+<body>
+  <link rel="stylesheet" href="../css/style.css">
+  <canvas id="myCanvas" width="800" height="800"></canvas>
+  <script type="module" src="ep2.js"></script>
+  <script type="module" src="events.js"></script>
+  <script type="module" src="fish.js"></script>
+  <script type="module" src="boids.js"></script>
+  <script type="module" src="config.js"></script>
+  <script type="module" src="obstacles.js"></script>
+  <script type="module" src="../lib/utils.js"></script>
+
+  <span>
+  <label for="separation-force">Separation Force:</label>
+  <input type="range" id="separation-force" min="0" max="20" step="0.1" value="0">
+  <span id="separation-force-value">0</span>
+
+  <label for="cohesion-force">Cohesion Force:</label>
+  <input type="range" id="cohesion-force" min="0" max="20" step="0.1" value="0">
+  <span id="cohesion-force-value">0</span>
+  </span>
+
+
+</body>
+</html>
