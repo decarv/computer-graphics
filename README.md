@@ -7,6 +7,8 @@ I intend to do some work with OpenGL and C++ in the future.
 
 ## projects
 
+Play with these projects on github.io: https://decarv.github.io/computer-graphics/
+
 - [x] [fractals](./fractals)
 - [x] [2d-boids-simulation](./2d-boids-simulation)
 - [ ] [3d-boids-simulation](./3d-boids-simulation)
