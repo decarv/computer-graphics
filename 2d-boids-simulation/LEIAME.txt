@@ -1,0 +1,88 @@
+LEIAME
+
+1. INTRODUÇÃO
+
+Essa é minha implementação da simulação de boids em 2D. A implementação é simplista modelada por velocidade vetorial,
+ângulo de referência e módulo de aceleração. Para atingir o comportamento de boids, a simulação conta com a aplicação de 4 forças,
+coesão, alinhamento, separação e alinhamento com o líder (de velocidade e ângulo).
+
+1.1. Organização
+
+O código está organizado em 3 diretórios, com a estrutura a seguir:
+
+├── css
+│   └── style.css
+├── lib
+│   ├── models
+│   ├── shaders
+│   │   ├── fish.frag
+│   │   └── fish.vert
+│   └── utils.js: contém algumas funções e classes simples implementadas por mim para abstrair código
+└── webpage
+    ├── config.js: configuração da simulação
+    ├── ep02.html
+    ├── ep2.js
+    ├── fish.js
+    ├── flocks.js
+    ├── LEIAME.txt
+    ├── obstacles.js
+    └── render.js: função de renderizar a simulação
+
+A lógica dos peixes e do cardume é mantida em fish e em flocks. A ideia era refatorar o código e separar a lógica do peixe
+e do líder, mas não tive tempo.
+
+Em geral, Flocks chama funções de peixes para adaptar individualmente o ângulo, velocidade e aceleração de cada peixe. Depois,
+todos os peixes são atualizados considerando todo o ambiente.
+
+Essa ideia me permitiria criar vários flocks, o que não aconteceu por conta do tempo.
+
+1.2. Execução
+
+Para executar o programa, primeiro é preciso extrair todos os arquivos para um diretório e servir o diretório em localhost.
+
+De dentro do diretório:
+
+    $ python3 -m http.server
+
+Depois, acessar a página html pelo browser:
+
+    localhost:8000/webpage/ep02.html
+
+1.3. Comandos
+
+O peixe líder pode ser guiado com as setas. 'P' ou 'p' pausam ou retomam a animação. 's' dá um passo na animação pausada.
+'+' e '-' adicionam e removem um peixe, respectivamente.
+
+2. HORAS DEDICADAS
+
+Pelo menos 12 horas por semana foram dedicadas ao EP. Considerando o estudo do assunto, que não foram de desenvolvimento,
+algo em torno de 4 horas a mais por semana. No total, algo em torno de 16 horas por semana.
+
+3. DIFICULDADES
+
+Modelagem do movimento e movimento do peixe líder. A primeira dificuldade que tive foi de como modelar o movimento dos
+peixes. A dificuldade se devia a como desenhar o peixe, movimentar e rotacionar. Inicialmente eu tentei criar o movimento
+a partir de um referencial de velocidade e usar vetores de velocidade e aceleração para modelar o movimento. Por algum
+motivo isso não estava dando certo para mim (hoje eu já sei que o problema estava na forma que eu atualizava), então decidi
+usar movimentos angulares, uma aceleração angular por meio da função steer e uma aceleração na direção do movimento.
+
+Movimento dos peixes e configuração das forças. Atingir fluidez do movimento dos peixes foi realmente um trabalho não trivial.
+Por consequência da forma que modelei o movimento e as forças, a aceleração acabou sendo um problema em alguns casos, então, pelo tempo curto,
+ajustes tópicos foram feitos para aperfeiçoar o movimento dos peixes (como atualizar apenas a velocidade em keepUpWithTheLeader). O problema
+sempre surge na interação das forças. Talvez com uma modelagem melhor, seguindo modelos físicos, teria sido mais fácil.
+Os problemas que surgem das interações das forças são diversos. Principalmente da força de separação, geralmente oposta à coesão.
+Lidar com a inércia dos peixes, fazer os peixes mudarem a rota rapidamente em alguns casos e lentamente em outros foi também uma dificuldade.
+
+Desvio de obstáculos. Desviar dos obstáculos de maneira fluida foi um trabalho complicado. Eu tentei diversas coisas, como
+criar um campo de interação com velocidades de escape, entre outras coisas. No final o desvio foi feito por meio de um
+movimento de steering com ângulos baixos.
+
+4. BUGS
+
+Algumas situações levam os peixes a comportamentos estranhos e inesperados. Algumas vezes os peixes entraram dentro dos
+obstáculos ou foram arrastados.
+
+5. AUTOR
+
+Henrique de Carvalho
+11819104

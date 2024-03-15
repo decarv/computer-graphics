@@ -7,7 +7,28 @@
  *
  */
 
-export { angleDifference, getRandomAngle, getRandomCoordinates, fetchShaderSource, createShader, createProgram, flatten , FlatBuffer, makeBuffer, setAttribute, randomColor };
+export { calculateAngle, rotatePoint, distance, angleDifference, getRandomAngle, getRandomCoordinates, fetchShaderSource, createShader, createProgram, flatten , FlatBuffer, makeBuffer, setAttribute, randomColor };
+
+function calculateAngle(vector1, vector2) {
+    const dotProduct = vector1.x * vector2.x + vector1.y * vector2.y;
+    const magnitude1 = Math.sqrt(vector1.x ** 2 + vector1.y ** 2);
+    const magnitude2 = Math.sqrt(vector2.x ** 2 + vector2.y ** 2);
+    const cosAngle = dotProduct / (magnitude1 * magnitude2);
+    return Math.acos(cosAngle);
+}
+
+function rotatePoint(point1, point2, cosAngle, sinAngle) {
+    const dx = point1[0] - point2[0];
+    const dy = point1[1] - point2[1];
+    return [
+        point2[0] + dx * cosAngle - dy * sinAngle,
+        point2[1] + dx * sinAngle + dy * cosAngle
+    ];
+}
+
+function distance(a, b) {
+    return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+}
 
 function angleDifference(angle1, angle2) {
     let da = angle1 - angle2;

@@ -1,17 +1,20 @@
 import * as utils from "../lib/utils.js";
 import config from "./config.js";
 
-// export { Fish, Boid, Leader };
-// class Boid extends Model {
-//
-// }
-//
-// class Leader extends Model {
-//
-// }
-//
-
+/**
+ * A classe Fish representa um peixe individual na simulação.
+ * Cada peixe tem seu próprio conjunto de propriedades, incluindo posição, velocidade, aceleração, 
+ * e se ele é um líder ou não.
+ */
 class Fish {
+     /**
+      * Cria um novo peixe.
+      *
+      * @param {WebGLRenderingContext} gl - O contexto WebGL a ser usado.
+      * @param {string} color - A cor do peixe.
+      * @param {boolean} isLeader - Indica se o peixe é um líder.
+      * @param {array} obstacles - Uma lista de obstáculos presentes no ambiente.
+      */
     constructor(gl, color, isLeader = false, obstacles = null) {
         // Carrega os dados do peixe
         this.gl = gl;
@@ -19,10 +22,9 @@ class Fish {
         this.isLeader = isLeader;
         this.obstacles = obstacles;
 
-
         let mag;
         if (this.isLeader) {
-            // Fixei o local de nascimento do peixe líder
+            // O peixe líder tem local de nascimento fixo
             this.tipX = 20;
             this.tipY = 10;
             this.angle = Math.PI / 4;
@@ -38,23 +40,28 @@ class Fish {
             mag = config.FISH_DEFAULT_SPEED;
         }
 
+        // O método construtor inicia o peixe com atributos básicos, incluindo posição,
+        // velocidade e aceleração. As variáveis a seguir ajudam a controlar o comportamento
+        // esperado do peixe
         this.velocity = {x: mag * Math.cos(this.angle), y: mag * Math.sin(this.angle)};
         this.acceleration = {x: 0.0, y: 0.0};
         this.accelerating = false;
         this.breaking = false;
-        this.steeringLeft = false;
-        this.steeringRight = false;
+        this.steeringLeft = false;  // usado para o peixe líder
+        this.steeringRight = false;  // usado para o peixe líder
 
-        const tip = [this.tipX, this.tipY];
-        const right = [this.tipX - config.FISH_WIDTH, this.tipY - config.FISH_HEIGHT];
-        const left = [this.tipX - config.FISH_WIDTH, this.tipY + config.FISH_HEIGHT];
-        this.vertices = utils.flatten([tip, right, left]);
+        this.tip = [this.tipX, this.tipY];
+        this.right = [this.tipX - config.FISH_WIDTH, this.tipY - config.FISH_HEIGHT];
+        this.left = [this.tipX - config.FISH_WIDTH, this.tipY + config.FISH_HEIGHT];
+        this.vertices = utils.flatten([this.tip, this.right, this.left]);
         this.verticesCount = this.vertices.length / config.DIMENSIONS;
+
+
+        this.withinInfluenceField = false;
 
         this.drawFish();
     }
 
-    // TODO: refactor
     drawFish() {
         const newTipX = this.tipX + this.velocity.x;
         const newTipY = this.tipY + this.velocity.y;
@@ -71,50 +78,57 @@ class Fish {
         const right = [this.tipX - config.FISH_WIDTH, this.tipY - config.FISH_HEIGHT];
         const left = [this.tipX - config.FISH_WIDTH, this.tipY + config.FISH_HEIGHT];
 
-        const centroid = //this.centroid();
+        const centroid =
         [
             (tip[0] + right[0] + left[0]) / 3,
             (tip[1] + right[1] + left[1]) / 3
         ];
 
-        // Then rotate the entire fish model by this.angle
         const cosAngle = Math.cos(this.angle);
         const sinAngle = Math.sin(this.angle);
-        const rotatedTip = this.rotatePoint(tip, centroid, cosAngle, sinAngle);
-        const rotatedRight = this.rotatePoint(right, centroid, cosAngle, sinAngle);
-        const rotatedLeft = this.rotatePoint(left, centroid, cosAngle, sinAngle);
+        const rotatedTip = utils.rotatePoint(tip, centroid, cosAngle, sinAngle);
+        const rotatedRight = utils.rotatePoint(right, centroid, cosAngle, sinAngle);
+        const rotatedLeft = utils.rotatePoint(left, centroid, cosAngle, sinAngle);
+
+        this.tip = {x: rotatedTip[0], y: rotatedTip[1]};
+        this.right = {x: rotatedRight[0], y: rotatedRight[1]};
+        this.left = {x: rotatedLeft[0], y: rotatedLeft[1]};
 
         this.vertices = utils.flatten([rotatedTip, rotatedRight, rotatedLeft]);
     }
 
-    rotatePoint(point, centroid, cosAngle, sinAngle) {
-        // This function rotates a point around the center of the fish
-        const dx = point[0] - centroid[0];
-        const dy = point[1] - centroid[1];
-        return [
-            centroid[0] + dx * cosAngle - dy * sinAngle,
-            centroid[1] + dx * sinAngle + dy * cosAngle
-        ];
-    }
-
+    /**
+     * Atualiza o estado do peixe.
+     */
     update() {
         this.updateSteeringAngle();
         this.updateAcceleration();
         this.updateVelocity();
-        this.checkCollision();
+        this.wallCollision();
         this.drag();
+        this.divertFromObstacle();
         this.drawFish();
     }
-
+    
+    /**
+     * Atualiza o ângulo de direção do peixe líder. O ângulo de direção dos boids são atualizados por meio das aplicações
+     * das forças.
+     */   
     updateSteeringAngle() {
         if (this.steeringLeft) {
             this.steer(config.ROTATION_ANGLE);
+            this.withinInfluenceField = false;
         }
         if (this.steeringRight) {
             this.steer(-config.ROTATION_ANGLE);
+            this.withinInfluenceField = false;
         }
     }
 
+    /**
+     * Atualiza a velocidade do peixe, baseado na aceleração que possui. Usa config.FPS para controlar o aumento de velocidade
+     * ajustado pelo FPS (apenas virtualmente).
+     */
     updateVelocity() {
         const velocityUpdate = {
             x: this.acceleration.x * Math.cos(this.angle) / config.FPS,
@@ -139,6 +153,9 @@ class Fish {
         }
     }
 
+    /**
+     * Atualiza a aceleração do peixe líder.
+     */
     updateAcceleration() {
         if (this.isLeader) {
             if (this.accelerating) {
@@ -152,13 +169,14 @@ class Fish {
                 this.acceleration.x = -config.BREAKING_SPEED * config.FISH_ACCELERATION * factor;
                 this.acceleration.y = -config.BREAKING_SPEED * config.FISH_ACCELERATION * factor;
             }
-        } else {
-            // Isso aqui é feito em outros lugares
         }
     }
 
-    checkCollision() {
-        // TODO: adjust reflection
+    /**
+     * Verifica se o peixe colidiu com a parede e altera o ângulo do peixe em 90 graus. 90 graus é arbitrário, só ficou
+     * mais realista dessa forma, mantendo uma simplicidade na forma de giro.
+     */
+    wallCollision() {
         if (this.vertices[0] <= 0) {
             if (this.angle <= Math.PI) this.steer(-Math.PI/2);
             else this.steer(Math.PI / 2);
@@ -175,10 +193,48 @@ class Fish {
         }
     }
 
-    drag() {
-        // TODO: melhorar o "drag"
-        // Isso funciona como um "drag"
+    /**
+     * Função usada para controlar o comportamento do peixe ao redor de obstáculos. Cada obstáculo tem uma esfera de influência
+     * verificada pela distância a cada peixe. Quão mais perto está um peixe, mais ele sofre uma repulsão em seu ângulo.
+     * O multiplyingFactor é usado para definir em qual sentido o peixe vira para contornar o obstáculo.
+     */
+    divertFromObstacle() {
+        this.withinInfluenceField = false;
+        const centroid = this.centroid();
+        for (let obstacle of this.obstacles) {
+            const distance = utils.distance(obstacle.center, this.tip);
 
+            if (distance > obstacle.influenceRadius) {
+                continue;
+            }
+
+            const v = {
+                     x: obstacle.center.x - centroid.x,
+                     y: obstacle.center.y - centroid.y
+            };
+            const angle = Math.PI/2 - utils.calculateAngle(v, this.velocity);
+            this.obstacleMultiplyingFactor = 1;
+            if (utils.distance(this.right, obstacle.center) > utils.distance(this.left, obstacle.center)) {
+                this.obstacleMultiplyingFactor *= -1;
+            }
+
+            const distanceFactor = 1 + 1/distance;
+            if (distance <= obstacle.radius + 5) {
+                this.obstacleMultiplyingFactor *= 4;
+            } else if (distance <= obstacle.radius + 10) {
+                this.obstacleMultiplyingFactor *= 2;
+            } else if (distance <= obstacle.influenceRadius) {
+                this.obstacleMultiplyingFactor *= 0.5;
+            }
+            this.withinInfluenceField = true;
+            this.steer(angle * this.obstacleMultiplyingFactor * distanceFactor);
+        }
+    }
+
+    /**
+     * Controla a aceleração dos peixes. Funciona como um atrito.
+     */
+    drag() {
         const magnitude = Math.sqrt(
             this.acceleration.x**2 + this.acceleration.y**2
         )
@@ -195,17 +251,29 @@ class Fish {
         }
     }
 
+    /**
+     * A movimentação angular é realizada por meio dessa função.
+     * @param theta
+     */
     steer(theta) {
-        const mag = this.speed()
+        const speed = this.speed()
         this.angle = Math.abs((2 * Math.PI + this.angle + theta) % (2 * Math.PI));
-        this.velocity.x = mag * Math.cos(this.angle);
-        this.velocity.y = mag * Math.sin(this.angle);
+        this.velocity.x = speed * Math.cos(this.angle);
+        this.velocity.y = speed * Math.sin(this.angle);
     }
 
+    /**
+     * Retorna a velocidade escalar do peixe.
+     * @returns {number}
+     */
     speed() {
         return Math.sqrt(Math.pow(this.velocity.x, 2) + Math.pow(this.velocity.y, 2));
     }
 
+    /**
+     * Retorna o centróide do peixe.
+     * @returns {{x: number, y: number}}
+     */
     centroid() {
         return {
             x: (this.vertices[0] + this.vertices[2] + this.vertices[4]) / 3,
@@ -213,6 +281,10 @@ class Fish {
         }
     }
 
+    /**
+     * Aplica a força de coesão a um peixe individualmente, é chamada pela classe que representa os Boids.
+     * @param centerOfMass
+     */
     applyCohesionForce(centerOfMass) {
         let centroid = this.centroid();
 
@@ -222,9 +294,17 @@ class Fish {
         if (da > cohesionForce) da = cohesionForce;
         if (da < -cohesionForce) da = -cohesionForce;
 
-        this.steer(da);
+        let obstacleFactor = 1;
+        if (this.withinInfluenceField)
+            obstacleFactor *= 0.3;
+        this.steer(da * obstacleFactor);
     }
 
+    /**
+     * Aplica a força de separação individualmente a cada peixe. Para isso, usa displacement, que é o vetor para onde o
+     * peixe deveria se deslocar. Calcula o ângulo de displacement e aplica uma aceleração.
+     * @param displacement
+     */
     applySeparationForce(displacement) {
         if (displacement.x === 0 && displacement.y === 0) {
             return;
@@ -236,45 +316,42 @@ class Fish {
         }
         
         const centroid = this.centroid();
-        let angle = this.calculateAngle(centroid, displacement);
+        let angle = utils.calculateAngle(centroid, displacement);
         let da = utils.angleDifference(this.angle, angle);
         const separationForce= config.SEPARATION_FORCE * Math.PI / 180;
         if (da > separationForce) da = separationForce;
         if (da < -separationForce) da = -separationForce;
 
-        this.steer(-da); // TODO: por que negativa?
+        // Usado para evitar que os peixes insistam em entrar nos obstáculos por meio da aplicaçõa dessa força.
+        let obstacleFactor = 1;
+        if (this.withinInfluenceField)
+            obstacleFactor *= 0.3;
+        this.steer(-da * obstacleFactor * 0.9);
         
-        this.acceleration.x += separationForce * normalizedDisplacement.x;
-        this.acceleration.y += separationForce * normalizedDisplacement.y;
-    }
-    
-    calculateAngle(vector1, vector2) {
-      const dotProduct = vector1.x * vector2.x + vector1.y * vector2.y;
-      const magnitude1 = Math.sqrt(vector1.x ** 2 + vector1.y ** 2);
-      const magnitude2 = Math.sqrt(vector2.x ** 2 + vector2.y ** 2);
-      const cosAngle = dotProduct / (magnitude1 * magnitude2);
-      return Math.acos(cosAngle);
+        this.acceleration.x += obstacleFactor * separationForce * normalizedDisplacement.x * 5;
+        this.acceleration.y += obstacleFactor * separationForce * normalizedDisplacement.y * 5;
     }
 
+    /**
+     * Esta função aplica uma força de alinhamento ao cardume. O parâmetro perceivedVelocity representa a velocidade
+     * aparente dos outros peixes nas redondezas. Com isso é capaz de alinhar velocidade e ângulo de cada peixe.
+     * @param perceivedVelocity
+     */
     applyAlignmentForce(perceivedVelocity) {
-        const perceivedSpeed = Math.sqrt(perceivedVelocity.x ** 2 + perceivedVelocity.y ** 2);
-        const normalizedPerceivedVelocity = {
-            x: perceivedVelocity.x / perceivedSpeed,
-            y: perceivedVelocity.y / perceivedSpeed
-        }
-
-        const speed = this.speed();
-        const normalizedVelocity = {
-            x: this.velocity.x / speed,
-            y: this.velocity.y / speed
-        }
-
         // A força de alinhamento de ângulo é uma constante C que multiplica a diferença de ângulo entre um
         // boid e o ângulo dos demais e faz o boid suavemente retornar para onde os demais apontam.
+        const perceivedSpeed = Math.sqrt(perceivedVelocity.x ** 2 + perceivedVelocity.y ** 2);
+        const speed = this.speed();
         const perceivedAngle = Math.atan2(perceivedVelocity.y, perceivedVelocity.x);
         let da = utils.angleDifference(this.angle, perceivedAngle);
-        this.steer(-da * config.ANGLE_ALIGNMENT_FORCE);
 
+        // Fator usado como ajuste para impedir que os peixes insistam em se ajustar em torno de obstáculos
+        let obstacleFactor = 1;
+        this.steer(-da * config.ANGLE_ALIGNMENT_FORCE * obstacleFactor);
+
+        // Se a velocidade percebida for maior que a velocidade deste boid, aumenta a aceleração para acompanhar.
+        // Se for menor, reduz a aceleração para desacelerar.
+        // A quantidade de mudança de aceleração é determinada pela SPEED_ALIGNMENT_FORCE da configuração.
         if (perceivedSpeed > speed) {
             this.acceleration.x += config.SPEED_ALIGNMENT_FORCE;
             this.acceleration.y += config.SPEED_ALIGNMENT_FORCE;
@@ -284,39 +361,36 @@ class Fish {
         }
     }
 
+    /**
+     * Função usada para manter os peixes próximos do líder. Ela calcula velocidade do líder e acelera o peixe, de acordo
+     * com uma função baseada na distância.
+     * @param leader
+     */
     keepUpWithTheLeader(leader) {
         const centroid = this.centroid();
         const leaderCentroid = leader.centroid();
-        const directionVector = {
-            x: leaderCentroid.x - centroid.x,
-            y: leaderCentroid.y - centroid.y
+        const distance = utils.distance(centroid, leaderCentroid);
+        const followDistance = this.gl.canvas.width / 3;
+        let speedFactor;
+        if (distance > followDistance) {
+            speedFactor = config.FISH_MAX_SPEED;
+        } else {
+            speedFactor = config.FISH_MIN_SPEED + (
+                config.FISH_MAX_SPEED - config.FISH_MIN_SPEED) * (
+                    distance / followDistance);
         }
-        const directionVectorMagnitude = Math.sqrt(
-            directionVector.x**2 + directionVector.y**2
-        );
-        const normalizedDirection = {
-            x: directionVector.x / directionVectorMagnitude,
-            y: directionVector.y /directionVectorMagnitude
-        }
-        const da = this.calculateAngle(this.velocity, directionVector);
-        this.steer(-da * config.ANGLE_LEADER_ALIGNMENT_FORCE);
 
-        // const factor = Math.max(
-        //     0.1, Math.min(1, directionVectorMagnitude/100)
-        // )
-        // this.acceleration.x += factor * normalizedDirection.x;
-        // this.acceleration.y += factor * normalizedDirection.y;
+        speedFactor *= 2;
 
-        // const speed = Math.sqrt(this.velocity.x**2 + this.velocity.y**2);
-        // const leaderSpeed = Math.sqrt(leader.velocity.x**2 + leader.velocity.y**2);
-        // const maxSpeed = Math.min(leaderSpeed, directionVectorMagnitude / 10);
-    
-        // if (speed > maxSpeed) {
-        //     // If moving too fast, reduce speed directly
-        //     const speedReductionFactor = maxSpeed / speed;
-        //     this.velocity.x *= speedReductionFactor;
-        //     this.velocity.y *= speedReductionFactor;
-        // }
+        const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
+        const direction = { x: this.velocity.x / speed, y: this.velocity.y / speed };
+
+        this.velocity.x = direction.x * speedFactor;
+        this.velocity.y = direction.y * speedFactor;
+
+        const angle = Math.atan2(direction.y, direction.x);
+        let da = utils.angleDifference(this.angle, angle);
+        this.steer(da * config.ANGLE_LEADER_ALIGNMENT_FORCE);
     }
 }
 
